@@ -73,7 +73,23 @@ class AuthWallError(RuntimeError):
 # --------------------------------------------------------------------------- #
 # credentials
 # --------------------------------------------------------------------------- #
+def load_env_file():
+    """Load KEY=VALUE lines from a local .env into os.environ (without clobbering
+    already-set env vars). Lets any launcher — PM2, bare uvicorn, systemd — pick
+    up LI_AT / JSESSIONID / API_KEY / PROXY_URL the same way Docker --env-file does.
+    """
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if not os.path.exists(env_path):
+        return
+    for line in open(env_path, encoding="utf-8"):
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip().strip('"'))
+
+
 def load_creds():
+    load_env_file()
     li_at = os.environ.get("LI_AT", "").strip()
     jsid = os.environ.get("LI_JSESSIONID", os.environ.get("JSESSIONID", "")).strip()
     if not (li_at and jsid):
@@ -369,6 +385,12 @@ class Scraper:
         self.s.cookies.set("li_at", li_at, domain=".linkedin.com")
         self.s.cookies.set("JSESSIONID", f'"{jsid}"', domain=".linkedin.com")
         self.s.headers.update({"user-agent": USER_AGENT, "accept-language": "en-US,en;q=0.9"})
+        # Route all LinkedIn traffic through a proxy when PROXY_URL is set,
+        # e.g. http://user:pass@residential-proxy-host:port
+        # (Required on a datacenter host like EC2 — LinkedIn flags AWS IPs.)
+        proxy = os.environ.get("PROXY_URL", "").strip()
+        if proxy:
+            self.s.proxies = {"http": proxy, "https": proxy}
 
     def get_page(self, slug):
         r = self.s.get(f"{BASE}/in/{slug}/", timeout=30)
@@ -483,23 +505,22 @@ def group_entries(lines, kind):
     return [" | ".join(e) for e in entries if e]
 
 
-def main():
-    if len(sys.argv) < 2:
-        print(__doc__)
-        return 2
-    debug = "--debug" in sys.argv
-    url = [a for a in sys.argv[1:] if not a.startswith("--")][0]
-
-    li_at, jsid = load_creds()
-    if not (li_at and jsid):
-        print("ERROR: set LI_AT + LI_JSESSIONID (env or .env).")
-        return 2
-
+def slug_of(url):
     m = re.search(r"/in/([^/?#]+)", urlparse(url).path)
-    if not m:
-        print("ERROR: not a /in/ profile URL.")
-        return 2
-    slug = m.group(1)
+    return m.group(1) if m else None
+
+
+def scrape_profile(url, li_at, jsid, debug=False):
+    """Fetch and structure a LinkedIn profile. Returns the profile dict.
+
+    Raises ValueError on a bad URL, AuthWallError on dead cookies, RuntimeError
+    on bot-detection (HTTP 999). This is the entry point the API and CLI share.
+    """
+    if not (li_at and jsid):
+        raise AuthWallError("No LinkedIn cookies configured.")
+    slug = slug_of(url)
+    if not slug:
+        raise ValueError("Not a /in/ profile URL.")
 
     sc = Scraper(li_at, jsid, debug=debug)
     page = sc.get_page(slug)
@@ -522,7 +543,7 @@ def main():
             bags[short] = bag
 
     routed = route(bags)
-    profile = {
+    return {
         "input_url": url, "slug": slug, "vieweeProfileId": viewee,
         "name": top["name"], "headline": top["headline"],
         "location": top["location"], "connections": top["connections"],
@@ -538,6 +559,21 @@ def main():
         "detail_links": routed["detail_links"],
         "_sections_seen": routed["_sections"],
     }
+
+
+def main():
+    if len(sys.argv) < 2:
+        print(__doc__)
+        return 2
+    debug = "--debug" in sys.argv
+    url = [a for a in sys.argv[1:] if not a.startswith("--")][0]
+
+    li_at, jsid = load_creds()
+    if not (li_at and jsid):
+        print("ERROR: set LI_AT + LI_JSESSIONID (env or .env).")
+        return 2
+
+    profile = scrape_profile(url, li_at, jsid, debug=debug)
 
     here = os.path.dirname(os.path.abspath(__file__))
     out_path = os.path.join(here, "profile_extracted.json")
