@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkedIn Profile Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --border: #e7e9ee;
+    --text: #1a1d24;
+    --text-soft: #565d6b;
+    --text-faint: #8991a1;
+    --accent: #3a5bff;
+    --accent-soft: #edf0ff;
+    --accent-dark: #2542cc;
+    --danger: #d33f49;
+    --danger-soft: #fdecee;
+    --success: #1f9d63;
+    --success-soft: #e9f9f0;
+    --shadow: 0 1px 2px rgba(20,22,30,.04), 0 8px 24px rgba(20,22,30,.06);
+    --radius: 16px;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  img{ max-width:100%; display:block; }
+
+  .wrap{
+    max-width:880px;
+    margin:0 auto;
+    padding:48px 24px 96px;
+  }
+
+  h1.page-title{
+    font-size:22px; font-weight:800; letter-spacing:-0.02em;
+    margin:0 0 4px;
+  }
+  p.page-sub{
+    margin:0 0 24px; color:var(--text-soft); font-size:14px;
+  }
+
+  /* ---- Search card ---- */
+  .search-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:28px 32px;
+    margin-bottom:22px;
+  }
+  form#search-form{ display:flex; flex-direction:column; gap:12px; }
+  .field-row{ display:flex; gap:10px; flex-wrap:wrap; }
+  .field-row input[type="url"],
+  .field-row input[type="password"],
+  .field-row input[type="text"]{
+    flex:1 1 240px;
+    padding:11px 14px;
+    border:1px solid var(--border);
+    border-radius:10px;
+    font-size:14px;
+    font-family:inherit;
+    background:var(--bg);
+    color:var(--text);
+    outline:none;
+    transition:border-color .15s, background .15s;
+  }
+  .field-row input:focus{ border-color:var(--accent); background:var(--surface); }
+  .remember{
+    display:flex; align-items:center; gap:6px;
+    font-size:13px; color:var(--text-faint);
+    white-space:nowrap;
+  }
+  .remember input{ accent-color:var(--accent); }
+  .actions{ align-items:center; }
+  button{
+    font-family:inherit; font-size:14px; font-weight:700;
+    border:none; border-radius:10px; cursor:pointer;
+    padding:11px 20px;
+    transition:opacity .15s, transform .05s;
+  }
+  button:active{ transform:scale(.98); }
+  button#fetch-btn{ background:var(--accent); color:#fff; }
+  button#fetch-btn:hover{ background:var(--accent-dark); }
+  button#fetch-btn:disabled{ opacity:.6; cursor:default; }
+  button#example-btn{ background:var(--bg); color:var(--text-soft); border:1px solid var(--border); }
+  button#example-btn:hover{ border-color:var(--accent); color:var(--accent-dark); }
+
+  #status{ margin-top:14px; font-size:13.5px; display:none; }
+  #status.info{ display:block; color:var(--text-faint); }
+  #status.error{ display:block; color:var(--danger); background:var(--danger-soft); padding:10px 14px; border-radius:10px; }
+  #status.success{ display:block; color:var(--success); background:var(--success-soft); padding:10px 14px; border-radius:10px; }
+
+  /* ---- Hero ---- */
+  .hero{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:40px;
+    display:flex;
+    gap:28px;
+    align-items:center;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero::before{
+    content:"";
+    position:absolute; inset:0 0 auto 0;
+    height:88px;
+    background:linear-gradient(120deg,var(--accent) 0%, #7b8bff 100%);
+    opacity:.08;
+  }
+  .avatar{
+    width:112px; height:112px; border-radius:50%;
+    object-fit:cover;
+    border:4px solid var(--surface);
+    box-shadow:0 0 0 1px var(--border), var(--shadow);
+    flex-shrink:0;
+    background:var(--accent-soft);
+    z-index:1;
+  }
+  .avatar-fallback{
+    width:112px; height:112px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(135deg,var(--accent),#7b8bff);
+    color:#fff; font-size:40px; font-weight:700;
+    flex-shrink:0; z-index:1;
+    box-shadow:0 0 0 1px var(--border), var(--shadow);
+  }
+  .hero-info{ z-index:1; min-width:0; }
+  .hero-info h2.name{
+    margin:0 0 6px; font-size:28px; font-weight:800; letter-spacing:-0.02em;
+  }
+  .hero-info .headline{
+    margin:0 0 10px; color:var(--text-soft); font-size:15px; line-height:1.5;
+  }
+  .meta-row{
+    display:flex; flex-wrap:wrap; gap:14px; align-items:center;
+    color:var(--text-faint); font-size:13.5px;
+  }
+  .meta-row span{ display:flex; align-items:center; gap:6px; }
+  .meta-row svg{ width:15px; height:15px; flex-shrink:0; }
+
+  /* ---- Chips ---- */
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+  .chip{
+    background:var(--accent-soft); color:var(--accent-dark);
+    font-size:12.5px; font-weight:600;
+    padding:6px 12px; border-radius:999px;
+  }
+
+  /* ---- Sections ---- */
+  section.card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:32px 36px;
+    margin-top:22px;
+  }
+  section.card h3{
+    font-size:14px; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--text-faint); font-weight:700; margin:0 0 22px;
+    display:flex; align-items:center; gap:8px;
+  }
+  section.card h3 svg{ width:16px; height:16px; color:var(--accent); }
+
+  /* ---- Timeline ---- */
+  .timeline{ position:relative; }
+  .titem{ position:relative; padding-left:28px; padding-bottom:26px; }
+  .titem:last-child{ padding-bottom:0; }
+  .titem::before{
+    content:""; position:absolute; left:5px; top:5px;
+    width:10px; height:10px; border-radius:50%;
+    background:var(--accent); box-shadow:0 0 0 3px var(--accent-soft);
+  }
+  .titem::after{
+    content:""; position:absolute; left:9px; top:17px; bottom:-4px;
+    width:2px; background:var(--border);
+  }
+  .titem:last-child::after{ display:none; }
+  .titem h4{ margin:0 0 3px; font-size:16px; font-weight:700; }
+  .titem .org{ font-size:14px; color:var(--text-soft); font-weight:500; margin-bottom:4px; }
+  .titem .sub{ font-size:12.5px; color:var(--text-faint); display:flex; flex-wrap:wrap; gap:4px 10px; }
+  .titem .desc{ margin-top:8px; font-size:13.5px; color:var(--text-soft); line-height:1.6; }
+
+  /* ---- Simple list rows (certifications / activity) ---- */
+  .row-list{ display:flex; flex-direction:column; gap:10px; }
+  .row-item{
+    display:flex; gap:12px; align-items:flex-start;
+    border:1px solid var(--border); border-radius:12px;
+    padding:14px 16px;
+  }
+  .row-icon{
+    width:30px; height:30px; border-radius:8px; flex-shrink:0;
+    background:var(--accent-soft); color:var(--accent-dark);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .row-icon svg{ width:16px; height:16px; }
+  .row-item p{ margin:0; font-size:13.5px; color:var(--text); line-height:1.5; }
+
+  /* ---- Links ---- */
+  .links{ display:flex; flex-wrap:wrap; gap:10px; }
+  .link-btn{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:10px 16px; border-radius:10px;
+    border:1px solid var(--border); background:var(--bg);
+    color:var(--text); text-decoration:none; font-size:13.5px; font-weight:600;
+    transition:border-color .15s, background .15s;
+  }
+  .link-btn:hover{ border-color:var(--accent); background:var(--accent-soft); color:var(--accent-dark); }
+  .link-btn svg{ width:15px; height:15px; }
+
+  footer{
+    text-align:center; color:var(--text-faint); font-size:12px;
+    margin-top:36px;
+  }
+
+  .spinner{
+    width:14px; height:14px; border-radius:50%;
+    border:2px solid rgba(255,255,255,.5); border-top-color:#fff;
+    display:inline-block; vertical-align:-2px; margin-right:8px;
+    animation:spin .7s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <h1 class="page-title">LinkedIn Profile Viewer</h1>
+  <p class="page-sub">Paste a public LinkedIn profile URL, add your API key, and render it as a clean profile page.</p>
+
+  <section class="search-card">
+    <form id="search-form">
+      <div class="field-row">
+        <input id="url-input" type="url" placeholder="https://www.linkedin.com/in/username/" required>
+      </div>
+      <div class="field-row actions">
+        <button type="submit" id="fetch-btn">Fetch Profile</button>
+        <button type="button" id="example-btn">View sample</button>
+      </div>
+    </form>
+    <div id="status"></div>
+  </section>
+
+  <div id="profile-view" hidden>
+    <section class="hero" id="hero"></section>
+
+    <section class="card" id="sec-about" hidden>
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>About</h3>
+      <div id="about-body"></div>
+    </section>
+
+    <section class="card" id="sec-exp" hidden>
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>Experience</h3>
+      <div class="timeline" id="exp-list"></div>
+    </section>
+
+    <section class="card" id="sec-edu" hidden>
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.66 2.69 3 6 3s6-1.34 6-3v-5"/></svg>Education</h3>
+      <div class="timeline" id="edu-list"></div>
+    </section>
+
+    <section class="card" id="sec-cert" hidden>
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M8.21 13.89 7 23l5-3 5 3-1.21-9.12"/></svg>Certifications</h3>
+      <div class="row-list" id="cert-list"></div>
+    </section>
+
+    <section class="card" id="sec-lang" hidden>
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 8h14M9 5v3m0 0c0 4-2 7-5 9m5-9c1 3 3 5 5 6M13 21l4-9 4 9m-6.5-3h5"/></svg>Languages</h3>
+      <div class="chips" id="lang-list"></div>
+    </section>
+
+    <section class="card" id="sec-activity" hidden>
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity</h3>
+      <div class="row-list" id="activity-list"></div>
+    </section>
+
+    <section class="card" id="sec-links">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Links</h3>
+      <div class="links" id="links-list"></div>
+    </section>
+  </div>
+
+  <footer>For personal/educational use · data comes from your own LinkedIn session cookies</footer>
+</div>
+
+<script>
+const API_KEY = "__API_KEY__"; // injected server-side, never entered by the user
+
+const ICONS = {
+  pin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`,
+  link: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
+  cert: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M8.21 13.89 7 23l5-3 5 3-1.21-9.12"/></svg>`,
+  activity: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>`
+};
+
+const NOISE = new Set([
+  "Something went wrong on our end",
+  "Try refreshing the page.",
+  "Show all", "more", "Experience", "Education", "Activity", "Certifications"
+]);
+
+/* ---- Example / sample data (matches the shape returned by /profile) ---- */
+const SAMPLE_PROFILE = {
+  input_url: "https://www.linkedin.com/in/aniketkolte79/",
+  name: "Aniket Kolte",
+  headline: "Software Engineer @Finarkein | 2X ACM ICPC Regionalist | Expert @codeforces (1711) | PICT CE'25",
+  location: "Pune District, Maharashtra, India",
+  profile_photo: "https://media.licdn.com/dms/image/v2/D4D03AQESYY3nh14QXg/profile-displayphoto-scale_100_100/B4DZw.YlXQJkAc-/0/1770573164524?e=1789603200&v=beta&t=5bHWYxd_8iIJEzKgJLHqxsHjvjWDNc6dq0orlxf5QAo",
+  about: "https://www.codechef.com/users/admiralpunk_1",
+  experience: [
+    { title:"Associate Software Engineer", company:"Finarkein", employment_type:"Full-time", dates:"Sep 2025 - Present · 1 yr", location:"Pune City, Maharashtra, India · Hybrid" },
+    { title:"Software Engineer Intern", company:"PayU", employment_type:"Internship", dates:"Jul 2025 - Aug 2025 · 2 mos", location:"Pune District, Maharashtra, India" },
+    { title:"Backend Intern", company:"Stealth", employment_type:"Internship", dates:"Feb 2025 - Jun 2025 · 5 mos" },
+    { title:"Domain Director — Competitive Programming", company:"PICT ACM Student Chapter (PASC)", dates:"Feb 2024 - Feb 2025 · 1 yr 1 mo", description:"Authored and organized technical contests including CodeLicious and Hire Hustle; led event coordination and community building." },
+    { title:"Competitive Programming Lead", company:"CodeChef PICT Chapter", dates:"Sep 2023 - Feb 2025 · 1 yr 6 mos", description:"Organized sponsored and non-sponsored contests; led post-contest discussions to sharpen participants' problem-solving skills." }
+  ],
+  education: [
+    { school:"Pune Institute of Computer Technology", degree:"Bachelor of Technology — Computer Engineering", years:"Dec 2021 – Jun 2025" }
+  ],
+  certifications: [
+    "Java Spring Framework, Spring Boot, Spring AI - Gen AI · Udemy · Issued Oct 2025 · Credential ID UC-399476e6-455b-4bf9-8e76-21fa0203d2e2",
+    "ICPC - International Collegiate Programming Contest · Issued Aug 2022 · Credential ID 842418"
+  ],
+  languages: [],
+  activity: ["3,212 followers"],
+  skills: []
+};
+
+function el(tag, cls, html){
+  const e = document.createElement(tag);
+  if(cls) e.className = cls;
+  if(html !== undefined) e.innerHTML = html;
+  return e;
+}
+function clear(node){ node.innerHTML = ""; }
+function dedupe(arr){ return [...new Set((arr || []).filter(Boolean))]; }
+
+/* ---- Render ---- */
+function renderHero(data){
+  const hero = document.getElementById('hero');
+  clear(hero);
+  const name = data.name || "Unknown";
+  const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+
+  if(data.profile_photo){
+    const img = document.createElement('img');
+    img.className = 'avatar';
+    img.src = data.profile_photo;
+    img.alt = name;
+    img.onerror = function(){ img.replaceWith(el('div','avatar-fallback', initials)); };
+    hero.appendChild(img);
+  } else {
+    hero.appendChild(el('div','avatar-fallback', initials));
+  }
+
+  const info = el('div','hero-info');
+  info.appendChild(el('h2','name', name));
+  if(data.headline){
+    info.appendChild(el('p','headline', data.headline.split('|')[0].trim()));
+  }
+
+  const meta = el('div','meta-row');
+  if(data.location) meta.appendChild(el('span', null, `${ICONS.pin}${data.location}`));
+  if(data.connections) meta.appendChild(el('span', null, `${data.connections} connections`));
+  info.appendChild(meta);
+
+  if(data.headline && data.headline.includes('|')){
+    const chipWrap = el('div','chips');
+    data.headline.split('|').slice(1).forEach(part=>{
+      const t = part.trim();
+      if(t) chipWrap.appendChild(el('span','chip', t));
+    });
+    info.appendChild(chipWrap);
+  }
+
+  hero.appendChild(info);
+}
+
+function renderAbout(data){
+  const sec = document.getElementById('sec-about');
+  const body = document.getElementById('about-body');
+  clear(body);
+  if(!data.about){ sec.hidden = true; return; }
+  sec.hidden = false;
+  if(/^https?:\/\//.test(data.about.trim())){
+    const a = el('a','link-btn', `${ICONS.link}Related link`);
+    a.href = data.about; a.target = '_blank'; a.rel = 'noopener';
+    body.appendChild(a);
+  } else {
+    body.appendChild(el('p', null, data.about));
+  }
+}
+
+function renderExperience(data){
+  const sec = document.getElementById('sec-exp');
+  const list = document.getElementById('exp-list');
+  clear(list);
+  const items = data.experience || [];
+  if(!items.length){ sec.hidden = true; return; }
+  sec.hidden = false;
+  items.forEach(x=>{
+    const item = el('div','titem');
+    item.appendChild(el('h4', null, x.title || "—"));
+    if(x.company){
+      const org = x.employment_type ? `${x.company} · ${x.employment_type}` : x.company;
+      item.appendChild(el('div','org', org));
+    }
+    const sub = el('div','sub');
+    if(x.dates) sub.appendChild(el('span', null, x.dates));
+    if(x.location) sub.appendChild(el('span', null, x.location));
+    item.appendChild(sub);
+    if(x.description) item.appendChild(el('div','desc', x.description));
+    list.appendChild(item);
+  });
+}
+
+function renderEducation(data){
+  const sec = document.getElementById('sec-edu');
+  const list = document.getElementById('edu-list');
+  clear(list);
+  const items = data.education || [];
+  if(!items.length){ sec.hidden = true; return; }
+  sec.hidden = false;
+  items.forEach(x=>{
+    const item = el('div','titem');
+    item.appendChild(el('h4', null, x.school || "—"));
+    if(x.degree) item.appendChild(el('div','org', x.degree));
+    const sub = el('div','sub');
+    if(x.years) sub.appendChild(el('span', null, x.years));
+    item.appendChild(sub);
+    if(x.activities) item.appendChild(el('div','desc', x.activities));
+    list.appendChild(item);
+  });
+}
+
+function renderCertifications(data){
+  const sec = document.getElementById('sec-cert');
+  const list = document.getElementById('cert-list');
+  clear(list);
+  const items = dedupe(data.certifications).filter(t => !NOISE.has(t) && t.length > 3);
+  if(!items.length){ sec.hidden = true; return; }
+  sec.hidden = false;
+  items.forEach(t=>{
+    const row = el('div','row-item');
+    row.appendChild(el('div','row-icon', ICONS.cert));
+    row.appendChild(el('p', null, t));
+    list.appendChild(row);
+  });
+}
+
+function renderLanguages(data){
+  const sec = document.getElementById('sec-lang');
+  const wrap = document.getElementById('lang-list');
+  clear(wrap);
+  const items = dedupe(data.languages);
+  if(!items.length){ sec.hidden = true; return; }
+  sec.hidden = false;
+  items.forEach(s=> wrap.appendChild(el('span','chip', s)));
+}
+
+function renderActivity(data){
+  const sec = document.getElementById('sec-activity');
+  const list = document.getElementById('activity-list');
+  clear(list);
+  const items = dedupe(data.activity).filter(t => !NOISE.has(t)).slice(0, 8);
+  if(!items.length){ sec.hidden = true; return; }
+  sec.hidden = false;
+  items.forEach(t=>{
+    const row = el('div','row-item');
+    row.appendChild(el('div','row-icon', ICONS.activity));
+    row.appendChild(el('p', null, t));
+    list.appendChild(row);
+  });
+}
+
+function renderLinks(data){
+  const wrap = document.getElementById('links-list');
+  clear(wrap);
+  const items = [
+    { label:'LinkedIn Profile', href: data.input_url }
+  ].filter(x=>x.href);
+  items.forEach(x=>{
+    const a = el('a','link-btn', `${ICONS.link}${x.label}`);
+    a.href = x.href; a.target = '_blank'; a.rel = 'noopener';
+    wrap.appendChild(a);
+  });
+}
+
+function renderProfile(data){
+  renderHero(data);
+  renderAbout(data);
+  renderExperience(data);
+  renderEducation(data);
+  renderCertifications(data);
+  renderLanguages(data);
+  renderActivity(data);
+  renderLinks(data);
+  document.getElementById('profile-view').hidden = false;
+}
+
+/* ---- Status helper ---- */
+function setStatus(kind, msg){
+  const box = document.getElementById('status');
+  box.className = kind || '';
+  box.innerHTML = msg || '';
+}
+
+/* ---- Form wiring ---- */
+const form = document.getElementById('search-form');
+const urlInput = document.getElementById('url-input');
+const fetchBtn = document.getElementById('fetch-btn');
+
+form.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const url = urlInput.value.trim();
+  if(!url) return;
+
+  fetchBtn.disabled = true;
+  fetchBtn.innerHTML = '<span class="spinner"></span>Fetching…';
+  setStatus('info', 'Contacting the API…');
+  document.getElementById('profile-view').hidden = true;
+
+  try{
+    const res = await fetch(`/profile?url=${encodeURIComponent(url)}`, {
+      headers: { 'X-API-Key': API_KEY }
+    });
+    const body = await res.json().catch(()=>({}));
+    if(!res.ok){
+      throw new Error(body.detail || `Request failed (HTTP ${res.status})`);
+    }
+    setStatus('success', 'Profile fetched successfully.');
+    renderProfile(body);
+  } catch(err){
+    setStatus('error', err.message || 'Something went wrong.');
+  } finally{
+    fetchBtn.disabled = false;
+    fetchBtn.textContent = 'Fetch Profile';
+  }
+});
+
+document.getElementById('example-btn').addEventListener('click', ()=>{
+  setStatus('info', 'Showing a sample profile — not a live fetch.');
+  renderProfile(SAMPLE_PROFILE);
+});
+</script>
+
+</body>
+</html>

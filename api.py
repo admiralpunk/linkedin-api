@@ -31,7 +31,7 @@ from __future__ import annotations
 import os
 
 from fastapi import FastAPI, Header, HTTPException, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
 from linkedin_scrape import AuthWallError, load_creds, load_env_file, scrape_profile
@@ -73,6 +73,18 @@ def _scrape(url: str) -> JSONResponse:
         raise HTTPException(status_code=429, detail=str(e))
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=f"Upstream error: {e}")
+
+
+@app.get("/", include_in_schema=False)
+def index():
+    # The API key never reaches the client as user input — it's baked into the
+    # page server-side so the built-in web UI can call /profile without asking
+    # for it. (The key is still required for anyone calling /profile directly.)
+    here = os.path.dirname(os.path.abspath(__file__))
+    with open(os.path.join(here, "index.html"), encoding="utf-8") as f:
+        html = f.read()
+    html = html.replace("__API_KEY__", API_KEY)
+    return HTMLResponse(content=html)
 
 
 @app.get("/health")
