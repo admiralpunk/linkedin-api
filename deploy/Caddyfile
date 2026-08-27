@@ -1,0 +1,6 @@
+# Caddy auto-provisions and renews a Let's Encrypt certificate for {$DOMAIN}.
+# Requires the domain's A record to point at this host and ports 80/443 open.
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy api:8000
+}

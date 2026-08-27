@@ -1,0 +1,85 @@
+{
+  "profile": {
+    "firstName": "Ada",
+    "lastName": "Lovelace",
+    "headline": "Mathematician | First Programmer",
+    "summary": "Working on the Analytical Engine and the notion of a general-purpose computer.",
+    "industryName": "Computer Software",
+    "locationName": "London, England, United Kingdom",
+    "geoCountryName": "United Kingdom",
+    "miniProfile": {
+      "picture": {
+        "com.linkedin.common.VectorImage": {
+          "rootUrl": "https://media.example.com/image/",
+          "artifacts": [
+            {"width": 100, "fileIdentifyingUrlPathSegment": "100_100/pic.jpg"},
+            {"width": 400, "fileIdentifyingUrlPathSegment": "400_400/pic.jpg"}
+          ]
+        }
+      },
+      "backgroundImage": {
+        "com.linkedin.common.VectorImage": {
+          "rootUrl": "https://media.example.com/bg/",
+          "artifacts": [
+            {"width": 800, "fileIdentifyingUrlPathSegment": "800/bg.jpg"},
+            {"width": 1584, "fileIdentifyingUrlPathSegment": "1584/bg.jpg"}
+          ]
+        }
+      }
+    }
+  },
+  "positionView": {
+    "elements": [
+      {
+        "title": "Independent Researcher",
+        "companyName": "Analytical Engine Project",
+        "locationName": "London, UK",
+        "description": "Wrote the first algorithm intended for machine execution.",
+        "company": {"miniCompany": {"entityUrn": "urn:li:fs_miniCompany:12345"}},
+        "timePeriod": {
+          "startDate": {"month": 6, "year": 1842},
+          "endDate": {"month": 11, "year": 1843}
+        }
+      },
+      {
+        "title": "Correspondent",
+        "companyName": "Charles Babbage",
+        "timePeriod": {"startDate": {"year": 1833}}
+      }
+    ]
+  },
+  "educationView": {
+    "elements": [
+      {
+        "schoolName": "Private Tutoring",
+        "degreeName": "Mathematics",
+        "fieldOfStudy": "Mathematics and Science",
+        "timePeriod": {"startDate": {"year": 1828}, "endDate": {"year": 1835}}
+      }
+    ]
+  },
+  "skillView": {
+    "elements": [
+      {"name": "Algorithms"},
+      {"name": "Mathematics"},
+      {"name": "Technical Writing"}
+    ]
+  },
+  "certificationView": {
+    "elements": [
+      {
+        "name": "Analytical Engine Notes",
+        "authority": "Royal Society",
+        "licenseNumber": "AE-1843",
+        "url": "https://example.com/notes",
+        "timePeriod": {"startDate": {"month": 10, "year": 1843}}
+      }
+    ]
+  },
+  "languageView": {
+    "elements": [
+      {"name": "English", "proficiency": "NATIVE_OR_BILINGUAL"},
+      {"name": "French", "proficiency": "PROFESSIONAL_WORKING"}
+    ]
+  }
+}

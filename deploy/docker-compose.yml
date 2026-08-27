@@ -1,0 +1,32 @@
+# Runs the API + Caddy (auto-HTTPS reverse proxy) together on an EC2 host.
+#   1. Point your domain's A record at the instance's Elastic IP.
+#   2. Set DOMAIN and put secrets in ../.env (git-ignored).
+#   3. docker compose -f deploy/docker-compose.yml up -d
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    env_file: ../.env
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
