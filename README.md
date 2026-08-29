@@ -18,6 +18,10 @@ JSESSIONID="ajax:<JSESSIONID cookie value>"
 API_KEY=<pick a random string>
 ```
 
+`JSESSIONID` self-refreshes as it rotates — no need to re-copy it. `LI_AT` is
+the actual login session; when that expires you must copy a fresh value from
+your browser by hand.
+
 Start the server:
 
 ```bash

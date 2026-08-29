@@ -109,6 +109,36 @@ def load_creds():
     return li_at, jsid
 
 
+def persist_jsessionid(new_jsid):
+    """Write a freshly-rotated JSESSIONID back to .env and os.environ so the
+    next process/API call picks it up — no manual DevTools copy needed.
+    (LI_AT still requires a manual refresh; it can only be renewed by
+    actually logging in again.)
+    """
+    fresh = new_jsid if new_jsid.startswith("ajax:") else f"ajax:{new_jsid}"
+    os.environ["JSESSIONID"] = fresh
+    os.environ.pop("LI_JSESSIONID", None)  # keep one source of truth
+
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if not os.path.exists(env_path):
+        return
+    lines = open(env_path, encoding="utf-8").read().splitlines()
+    out, replaced = [], False
+    for line in lines:
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#") and "=" in stripped:
+            key = stripped.split("=", 1)[0].strip()
+            if key in ("JSESSIONID", "LI_JSESSIONID"):
+                out.append(f'JSESSIONID="{fresh}"')
+                replaced = True
+                continue
+        out.append(line)
+    if not replaced:
+        out.append(f'JSESSIONID="{fresh}"')
+    with open(env_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(out) + "\n")
+
+
 # --------------------------------------------------------------------------- #
 # HTML top-card parsing
 # --------------------------------------------------------------------------- #
@@ -392,8 +422,26 @@ class Scraper:
         if proxy:
             self.s.proxies = {"http": proxy, "https": proxy}
 
+    def _sync_jsessionid(self):
+        """Pick up any JSESSIONID rotation from the live cookie jar (requests
+        applies Set-Cookie responses automatically) so later csrf-token
+        headers match the CURRENT cookie, and persist it for next time.
+        """
+        raw = self.s.cookies.get("JSESSIONID", domain=".linkedin.com")
+        if not raw:
+            return
+        fresh = raw.strip('"')
+        if fresh and fresh != self.csrf:
+            self.csrf = fresh
+            persist_jsessionid(fresh)
+
     def get_page(self, slug):
-        r = self.s.get(f"{BASE}/in/{slug}/", timeout=30)
+        try:
+            r = self.s.get(f"{BASE}/in/{slug}/", timeout=30)
+        except requests.exceptions.TooManyRedirects:
+            raise AuthWallError(
+                "Too many redirects — li_at/JSESSIONID expired or invalid."
+            )
         if r.status_code in (401, 403):
             raise AuthWallError(f"HTTP {r.status_code}")
         if r.status_code == 999:
@@ -401,6 +449,7 @@ class Scraper:
         r.encoding = "utf-8"
         if "authwall" in r.text and "window.location.href" in r.text:
             raise AuthWallError("Authwall — li_at missing/expired.")
+        self._sync_jsessionid()
         return r.text
 
     def component(self, short, slug, viewee):
@@ -428,6 +477,7 @@ class Scraper:
         r = self.s.post(url, headers=h, data=json.dumps(body), timeout=30)
         if self.debug:
             print(f"    {short:32} HTTP {r.status_code} {len(r.text)}B", file=sys.stderr)
+        self._sync_jsessionid()
         return r.text if r.status_code < 400 else ""
 
 
