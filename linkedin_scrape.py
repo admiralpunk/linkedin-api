@@ -39,20 +39,17 @@ Usage:
 import html as htmlmod
 import json
 import os
+import random
 import re
 import sys
 import time
 from urllib.parse import urlparse
 
-import requests
+from curl_cffi import requests
 
 import flight_parse as fp  # local module (same folder)
 
 BASE = "https://www.linkedin.com"
-USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
-)
 APP_VERSION = "0.2.6951"
 CARD_PREFIX = "com.linkedin.sdui.generated.profile.dsl.impl."
 # TopComponents intentionally omitted — top card comes from the page HTML.
@@ -411,10 +408,16 @@ def structure_education(items):
 class Scraper:
     def __init__(self, li_at, jsid, debug=False):
         self.csrf, self.debug = jsid, debug
-        self.s = requests.Session()
+        # impersonate="chrome" replays a real Chrome's TLS/JA3 + HTTP2
+        # fingerprint (curl-impersonate under the hood) instead of Python's
+        # own OpenSSL handshake, which bot-detection fingerprints trivially.
+        # It also sets a matching user-agent/sec-ch-ua bundle on its own —
+        # don't override user-agent manually, that'd create a UA-vs-JA3
+        # mismatch, itself a stronger tell than sending no override at all.
+        self.s = requests.Session(impersonate="chrome")
         self.s.cookies.set("li_at", li_at, domain=".linkedin.com")
         self.s.cookies.set("JSESSIONID", f'"{jsid}"', domain=".linkedin.com")
-        self.s.headers.update({"user-agent": USER_AGENT, "accept-language": "en-US,en;q=0.9"})
+        self.s.headers.update({"accept-language": "en-US,en;q=0.9"})
         # Route all LinkedIn traffic through a proxy when PROXY_URL is set,
         # e.g. http://user:pass@residential-proxy-host:port
         # (Required on a datacenter host like EC2 — LinkedIn flags AWS IPs.)
@@ -582,7 +585,7 @@ def scrape_profile(url, li_at, jsid, debug=False):
 
     bags = {}
     for short in CARDS:
-        time.sleep(0.8)
+        time.sleep(random.uniform(0.6, 1.2))  # jitter — avoid a robotic fixed cadence
         stream = sc.component(short, slug, viewee)
         if stream.strip():
             bag = new_bag()

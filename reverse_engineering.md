@@ -25,7 +25,10 @@ data. **The real data path is the authenticated SDUI/RSC calls.**
 - SDUI calls add tracing headers (`x-li-rsc-stream`, `x-li-track`,
   `x-li-application-version`, etc.) copied from real browser traffic.
 - Bot defenses observed: Cloudflare `__cf_bm`, device fingerprinting, and
-  `999` responses when traffic looks scripted.
+  `999` responses when traffic looks scripted. The client uses `curl_cffi`
+  (`impersonate="chrome"`) rather than plain `requests`, since a raw Python
+  TLS handshake (JA3/JA4) is itself a bot-detection signal no amount of
+  header spoofing fixes.
 
 ## 3. Slug → URN
 
